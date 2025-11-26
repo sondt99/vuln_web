@@ -87,7 +87,7 @@ base_layout = """
     <nav class="bg-slate-950/90 border-b border-cyan-800 p-4 sticky top-0 z-50 backdrop-blur-md">
         <div class="container mx-auto flex justify-between items-center">
             <a href="/" class="text-3xl font-bold holo-text tracking-widest flex items-center gap-2">
-                <span class="text-4xl">💠</span> [XSS_DOJO]
+                [XSS_DOJO]
             </a>
             <div class="space-x-6 text-sm flex items-center font-bold">
                 <span class="text-cyan-600 uppercase tracking-widest">SYSTEM: <span class="text-cyan-400">OPERATIONAL</span></span>
@@ -148,7 +148,7 @@ base_layout = """
     </div>
     
     <footer class="bg-slate-950 border-t border-cyan-900 text-center p-6 text-slate-600 text-xs mt-auto mono-font">
-        SECURE TRAINING ENVIRONMENT // AUTHORIZED PERSONNEL ONLY // v2.2.0
+        © sondt (Administrator) // All Rights Reserved
     </footer>
 </body>
 </html>
@@ -248,7 +248,6 @@ def level3():
     html_content = """
         <div class="text-center py-12">
             <div class="inline-block p-6 border border-cyan-500/30 rounded-full mb-6">
-                <div class="text-6xl animate-pulse">📡</div>
             </div>
             <h2 class="text-3xl mb-2 text-white font-light">SIGNAL INTERCEPTOR</h2>
             <p class="text-slate-400 mb-8">Waiting for URL Fragment...</p>

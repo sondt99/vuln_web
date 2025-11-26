@@ -120,7 +120,7 @@ base_layout = """
     <nav class="bg-slate-950/90 border-b border-amber-800 p-4 sticky top-0 z-50 backdrop-blur-md">
         <div class="container mx-auto flex justify-between items-center">
             <a href="/" class="text-3xl font-bold holo-text tracking-widest flex items-center gap-2">
-                <span class="text-4xl">💉</span> [SQLi_DOJO]
+                [SQLi_DOJO]
             </a>
             <div class="space-x-6 text-sm flex items-center font-bold">
                 <span class="text-amber-600 uppercase tracking-widest">SYSTEM: <span class="text-amber-400">OPERATIONAL</span></span>
@@ -190,7 +190,7 @@ base_layout = """
     </div>
     
     <footer class="bg-slate-950 border-t border-amber-900 text-center p-6 text-slate-600 text-xs mt-auto mono-font">
-        SECURE TRAINING ENVIRONMENT // AUTHORIZED PERSONNEL ONLY // v1.0.0
+        © sondt (Administrator) // All Rights Reserved
     </footer>
 </body>
 </html>
@@ -450,7 +450,7 @@ def level7():
     
     # WAF: Block spaces
     if ' ' in id_param:
-        res = "<div class='text-red-500 text-2xl font-bold p-4 border border-red-500 bg-red-900/20'>🚫 WAF ALERT: SPACE CHAR DETECTED</div>"
+        res = "<div class='text-red-500 text-2xl font-bold p-4 border border-red-500 bg-red-900/20'>WAF ALERT: SPACE CHAR DETECTED</div>"
         sql = "BLOCKED_BY_WAF"
     else:
         sql = f"SELECT name, price FROM products WHERE id = {id_param}"
@@ -533,7 +533,7 @@ def level9():
     
     # WAF: Block "UNION SELECT" with space, case insensitive
     if re.search(r'union\s+select', search, re.IGNORECASE):
-        msg = "<div class='text-red-500 text-center text-3xl font-bold p-8 border-2 border-red-500 bg-red-900/30'>🚫 WAF BLOCKED: 'UNION SELECT'</div>"
+        msg = "<div class='text-red-500 text-center text-3xl font-bold p-8 border-2 border-red-500 bg-red-900/30'>WAF BLOCKED: 'UNION SELECT'</div>"
         return render_page(9, "WAF Bypass.", msg, "BLOCKED_BY_WAF")
 
     sql = f"SELECT name, description FROM products WHERE name LIKE '%{search}%'"
@@ -546,7 +546,7 @@ def level9():
     content = """
     <div class="max-w-lg mx-auto">
         <div class="mb-4 flex items-center gap-2 text-red-400 border border-red-900/50 p-2 bg-red-900/10 rounded">
-            <span>🛡️</span> <span>Active Rule: Block "UNION SELECT"</span>
+            <span>Active Rule: Block "UNION SELECT"</span>
         </div>
         <form method="GET" class="flex gap-2">
             <input type="text" name="q" value="{{ search }}" class="flex-1 p-2 bg-slate-900 border-amber-800" placeholder="Product search...">

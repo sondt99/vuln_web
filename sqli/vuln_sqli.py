@@ -602,4 +602,4 @@ def level10():
     return render_page(10, "Stacked Queries (UPDATE).", content, query_log, msg=msg)
 
 if __name__ == '__main__':
-    app.run(debug=False port=1111)
+    app.run(debug=False, port=1111)

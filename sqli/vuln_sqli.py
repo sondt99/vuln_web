@@ -259,7 +259,7 @@ def level1():
         <label class="block text-amber-500 mb-1 font-bold">USERNAME</label>
         <div class="flex mb-4">
             <span class="bg-amber-900/50 text-amber-500 p-2 border border-amber-800 border-r-0 font-mono">></span>
-            <input type="text" name="username" class="w-full p-2 rounded-r" placeholder="admin">
+            <input type="text" name="username" class="w-full p-2 rounded-r" placeholder="Enter username">
         </div>
         
         <label class="block text-amber-500 mb-1 font-bold">PASSWORD</label>
@@ -347,7 +347,7 @@ def level3():
         </div>
     </div>
     """
-    return render_page(3, "Use UNION SELECT to retrieve the 'flag' from 'secrets'.", content, query_log, results=results, search=search)
+    return render_page(3, "Retrieve the hidden flag from the database.", content, query_log, results=results, search=search)
 
 @app.route('/level4')
 def level4():
@@ -438,8 +438,7 @@ def level6():
         <div class="mt-8 p-4 border border-amber-900 bg-black text-amber-500 font-mono text-xl">
             STATUS: <span class="text-white">{{ msg }}</span>
         </div>
-        <p class="mt-4 text-xs text-slate-500">Hint: <code>' AND sleep(3)--</code></p>
-    </div>
+      </div>
     """
     return render_page(6, "Time Based. Force a delay to extract data.", content, "HIDDEN (Blind Query)", search=search, msg=msg)
 
@@ -469,8 +468,7 @@ def level7():
             <button class="bg-amber-600 px-4 py-2 font-bold text-black">GET</button>
         </form>
         <div class="mt-6">{{ res|safe }}</div>
-        <p class="mt-8 text-xs text-slate-500">Hint: Use SQL comments <code>/**/</code> to replace spaces.</p>
-    </div>
+        </div>
     """
     return render_page(7, "Bypass Space Filter.", content, sql, id_param=id_param, res=res)
 
@@ -596,8 +594,7 @@ def level10():
         <div class="mt-8 border p-4 border-amber-900 bg-black/80 min-h-[60px] flex items-center justify-center">
             {{ msg|safe }}
         </div>
-        <p class="mt-4 text-xs text-slate-500">Goal: Change admin password to 'pwned'.<br>Hint: <code>1; UPDATE users SET ...</code></p>
-    </div>
+          </div>
     """
     return render_page(10, "Stacked Queries (UPDATE).", content, query_log, msg=msg)
 

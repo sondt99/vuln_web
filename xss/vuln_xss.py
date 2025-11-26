@@ -271,7 +271,7 @@ def level3():
     """
     return render_template_string(base_layout, active_level=3, titles=titles,
                                   current_title=titles[2],
-                                  description="Client-side vulnerability. The server does not see the payload. Check the URL Fragment (#).",
+                                  description="Client-side vulnerability. The server does not see the payload.",
                                   content=html_content)
 
 # LEVEL 4: Tag Filter (No Script)
@@ -289,7 +289,7 @@ def level4():
                 <span class="text-xs text-slate-500">Blocklist: &lt;script&gt;</span>
             </div>
             <div class="flex gap-2">
-                <input type="text" name="q" value="{query}" class="w-full p-3 rounded bg-slate-900 border-slate-700" placeholder="Try <script>alert(1)</script>">
+                <input type="text" name="q" value="{query}" class="w-full p-3 rounded bg-slate-900 border-slate-700" placeholder="Enter search term...">
                 <button class="bg-blue-700 px-6 py-2 text-white font-bold rounded hover:bg-blue-600">TEST</button>
             </div>
         </form>
@@ -300,7 +300,7 @@ def level4():
     """
     return render_template_string(base_layout, active_level=4, titles=titles,
                                   current_title=titles[3],
-                                  description="Bypass. The administrator has blocked the <script> tag. Can you execute JS using other tags?",
+                                  description="Bypass. The administrator has blocked the <script> tag.",
                                   content=html_content)
 
 # LEVEL 5: Attribute Injection
@@ -321,14 +321,11 @@ def level5():
                 
                 <button class="w-full bg-cyan-700 text-white py-3 font-bold rounded hover:bg-cyan-600 transition">UPDATE PROFILE</button>
             </form>
-            <div class="mt-4 text-xs text-slate-500 text-center">
-                Note: Tag injection (&lt; &gt;) is blocked by WAF.
-            </div>
-        </div>
+          </div>
     """
     return render_template_string(base_layout, active_level=5, titles=titles,
                                   current_title=titles[4],
-                                  description="Context Breakout. Angle brackets are escaped. You cannot create new tags. Check the input attribute.",
+                                  description="Context Breakout. Angle brackets are escaped. You cannot create new tags.",
                                   content=html_content)
 
 # LEVEL 6: Protocol Injection
@@ -379,8 +376,7 @@ def level7():
         </div>
         <script>
             // CONFIGURATION
-            // Developer Note: Removed < > " / to prevent XSS.
-            var systemStatus = '{safe_payload}';
+              var systemStatus = '{safe_payload}';
             
             document.getElementById('status-box').innerText = "STATUS: " + systemStatus;
         </script>
@@ -413,7 +409,7 @@ def level8():
         <form method="GET" class="text-center">
             <label class="block mb-4 text-xl font-bold text-red-400">🔥 ADVANCED FIREWALL ENABLED</label>
             <div class="inline-flex shadow-lg">
-                <input type="text" name="q" class="w-96 p-3 bg-slate-900 border-red-900 text-red-200 placeholder-red-900" placeholder="Try <script>alert(1)</script>">
+                <input type="text" name="q" class="w-96 p-3 bg-slate-900 border-red-900 text-red-200 placeholder-red-900" placeholder="Enter input...">
                 <button class="bg-red-700 px-6 py-2 text-white font-bold hover:bg-red-600">INJECT</button>
             </div>
         </form>
@@ -423,7 +419,7 @@ def level8():
     """
     return render_template_string(base_layout, active_level=8, titles=titles,
                                   current_title=titles[7],
-                                  description="Obfuscation. The WAF checks for '<script' and 'javascript:'. Can you hide your payload via encoding?",
+                                  description="Obfuscation. The WAF checks for '<script' and 'javascript:'.",
                                   content=html_content)
 
 # LEVEL 9: Client-Side Template Injection (CSTI)
@@ -438,11 +434,7 @@ def level9():
                 <div id="greeting" class="text-3xl text-white font-bold">Hello, Guest!</div>
             </div>
             
-            <div class="mt-6 text-sm text-slate-400">
-                <p>Tip: Add <code>#name=YourName</code> to the URL to customize.</p>
-                <p>Try math: <code>#name={{ 7 * 7 }}</code></p>
-            </div>
-        </div>
+          </div>
 
         <script>
             function parseTemplate() {
@@ -462,7 +454,7 @@ def level9():
     """
     return render_template_string(base_layout, active_level=9, titles=titles,
                                   current_title=titles[8],
-                                  description="Template Injection. The application manually parses '{{ code }}' and executes it. Check the URL Fragment.",
+                                  description="Template Injection. The application manually parses '{{ code }}' and executes it.",
                                   content=html_content)
 
 # LEVEL 10: CSP Bypass (JSONP/Gadget)
@@ -527,7 +519,7 @@ def level10():
     # FIX: Pass extra_head directly to render_template_string
     return render_template_string(base_layout, active_level=10, titles=titles,
                                   current_title=titles[9],
-                                  description="CSP Bypass. 'script-src self' is active. Inline scripts are blocked. Can you use the local API to execute code?",
+                                  description="CSP Bypass. 'script-src self' is active. Inline scripts are blocked.",
                                   content=html_content,
                                   extra_head=custom_head)
 

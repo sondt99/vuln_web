@@ -12,8 +12,8 @@ def get_db():
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(DATABASE, check_same_thread=False)
-        # FIX: Hàm sleep giờ trả về 1 (True) sau khi ngủ. 
-        # Cũ: lambda s: time.sleep(float(s)) -> Trả về None -> Query bị False -> Không hiện kết quả.
+        # FIX: Sleep function now returns 1 (True) after sleeping.
+        # Old: lambda s: time.sleep(float(s)) -> Returns None -> Query becomes False -> No results shown.
         db.create_function("sleep", 1, lambda s: (time.sleep(float(s)) is None) and 1)
         try:
             cur = db.cursor()
@@ -30,7 +30,7 @@ def init_db(db):
     c.execute("INSERT INTO users (username, password, role) VALUES ('admin', 's3cr3t_P@ssw0rd', 'admin')")
     c.execute("INSERT INTO users (username, password, role) VALUES ('user', '123456', 'user')")
     
-    # Products (Lưu ý: 3 cột hiển thị chính để khớp với Level 9)
+    # Products (Note: 3 main display columns to match Level 9)
     c.execute('''CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, price INTEGER, description TEXT)''')
     c.execute("INSERT INTO products (name, price, description) VALUES ('Quantum Core', 500, 'Powerful CPU')")
     c.execute("INSERT INTO products (name, price, description) VALUES ('Plasma Ray', 1200, 'Weapon of mass destruction')")
@@ -48,7 +48,7 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
-# --- THEME & TEMPLATES (Giữ nguyên giao diện đẹp của bạn) ---
+# --- THEME & TEMPLATES ---
 base_layout = """
 <!DOCTYPE html>
 <html lang="en">
@@ -160,7 +160,7 @@ def level1():
     </form>
     <div class="mt-8 text-center">{{ msg|safe }}</div>
     """
-    return render_page(1, "Mục tiêu: Đăng nhập Admin mà không cần mật khẩu. (String Injection)", content, query_log, msg=msg)
+    return render_page(1, "Objective: Login as Admin without password. (String Injection)", content, query_log, msg=msg)
 
 @app.route('/level2')
 def level2():
@@ -177,7 +177,7 @@ def level2():
     </div>
     <div class="grid grid-cols-2 gap-4">{% for item in items %}<div class="border border-amber-800 p-4"><h3 class="font-bold text-white">{{ item['name'] }}</h3><div class="text-amber-500">{{ item['price'] }} $</div></div>{% endfor %}</div>
     """
-    return render_page(2, "Mục tiêu: Hiển thị tất cả sản phẩm. (Integer Injection, không cần dấu nháy)", content, sql, items=items, id_param=id_param)
+    return render_page(2, "Objective: Display all products. (Integer Injection)", content, sql, items=items, id_param=id_param)
 
 @app.route('/level3')
 def level3():
@@ -194,18 +194,17 @@ def level3():
     content = """
     <form method="GET" class="flex gap-2 mb-8"><input type="text" name="search" value="{{ search }}" class="flex-1 p-3 bg-slate-900" placeholder="Search..."><button class="bg-amber-600 px-6 font-bold text-black">SCAN</button></form>
     <div class="space-y-2">{% for r in results %}<div class="p-2 border-l-2 border-amber-500 bg-slate-900/50">{{ r[0] }} :: {{ r[1] }}</div>{% endfor %}</div>
-    <div class="mt-8 text-xs text-slate-500 text-center">Hidden table 'secrets' (columns: id, flag).</div>
-    """
-    return render_page(3, "Mục tiêu: Lấy Flag từ bảng 'secrets'. Dùng UNION để gộp kết quả.", content, sql, results=results, search=search)
+        """
+    return render_page(3, "Objective: Extract Flag from 'secrets' table using UNION.", content, sql, results=results, search=search)
 
 @app.route('/level4')
 def level4():
-    # FIX: Chuyển sang String context để dễ gây lỗi syntax
+    # FIX: Use string context to easily trigger syntax errors
     id_param = request.args.get('uuid', 'user-001')
     error_msg = None
     success_signal = False
     
-    # Query tìm kiếm theo chuỗi
+    # Query search by string
     sql = f"SELECT * FROM users WHERE username = '{id_param}'" 
     
     try:
@@ -214,7 +213,7 @@ def level4():
         cur.fetchall()
     except Exception as e:
         error_msg = str(e)
-        # Nếu có lỗi liên quan đến syntax SQL, coi như đã khai thác thành công
+        # If there's a SQL syntax error, consider exploitation successful
         if "unrecognized token" in error_msg or "syntax" in error_msg.lower() or "unterminated" in error_msg.lower():
             success_signal = True
 
@@ -240,14 +239,14 @@ def level4():
         {% endif %}
     </div>
     """
-    return render_page(4, "Mục tiêu: Làm DB in ra lỗi cú pháp (Syntax Error).", content, sql, id_param=id_param, error_msg=error_msg, success_signal=success_signal)
+    return render_page(4, "Objective: Trigger database syntax errors.", content, sql, id_param=id_param, error_msg=error_msg, success_signal=success_signal)
 
 @app.route('/level5')
 def level5():
     username = request.args.get('u', '')
     
-    # FIX: Chặn input 'admin' trực tiếp ở tầng code Python
-    # Buộc user phải dùng injection như: admin' AND 1=1-- 
+    # FIX: Block direct 'admin' input at Python code level
+    # Force user to use injection like: admin' AND 1=1-- 
     if username.strip() == 'admin':
         status = "<span class='text-red-500 font-bold'>[ DIRECT ACCESS BLOCKED BY IPS ]</span>"
         sql = "BLOCKED: Direct 'admin' string not allowed."
@@ -272,10 +271,9 @@ def level5():
             </form>
             <div class="text-3xl font-mono tracking-wider">{{ status|safe }}</div>
         </div>
-        <p class="mt-4 text-xs text-slate-500">Gợi ý: Hệ thống chặn chữ 'admin'. Hãy dùng logic đúng/sai để bypass.</p>
     </div>
     """
-    return render_page(5, "Mục tiêu: Bypass filter đơn giản và xác nhận user 'admin' tồn tại (Blind).", content, sql, username=username, status=status)
+    return render_page(5, "Objective: Bypass simple filter and confirm 'admin' user exists (Blind).", content, sql, username=username, status=status)
 
 @app.route('/level6')
 def level6():
@@ -283,11 +281,10 @@ def level6():
     start_time = time.time()
     results = []
     
-    # Logic: Search rỗng thì không query để tiết kiệm resource
-    # Nếu có search (hoặc payload), query mới chạy
+    # Logic: Empty search doesn't query to save resources
+    # Only query when there's search (or payload)
     if search:
         # VULN: Time Based Blind
-        # Payload mẫu: ' OR sleep(3)--
         sql = f"SELECT * FROM products WHERE name = '{search}'"
         try:
             cur = get_db().cursor()
@@ -296,7 +293,7 @@ def level6():
         except: pass
     
     duration = time.time() - start_time
-    # Chỉ hiện thời gian nếu query mất hơn 0.1s (tức là có độ trễ bất thường hoặc user đang test)
+    # Only show time if query takes more than 0.1s (abnormal delay or user testing)
     msg = f"{duration:.2f}s" if duration > 0.1 else "0.00s"
     
     status_class = "text-green-500 font-bold border-green-500" if duration > 2 else "text-slate-600 border-slate-800"
@@ -320,7 +317,7 @@ def level6():
         </div>
     </div>
     """
-    return render_page(6, "Mục tiêu: Khiến Database 'ngủ' 3 giây. (Dùng OR sleep(3))", content, "HIDDEN (Blind)", search=search, msg=msg, status_class=status_class, duration=duration)
+    return render_page(6, "Objective: Make database sleep for 3 seconds.", content, "HIDDEN (Blind)", search=search, msg=msg, status_class=status_class, duration=duration)
 
 @app.route('/level7')
 def level7():
@@ -328,22 +325,20 @@ def level7():
     item = None
     error = None
     
-    # FILTER: Chặn dấu cách (Space)
+    # FILTER: Block space characters
     if ' ' in id_param:
         error = "WAF ERROR: Malicious input detected (Space character)."
         sql = "BLOCKED"
     else:
-        # Query lấy sản phẩm. 
-        # Cấu trúc bảng products: id, name, price, description
-        # Payload mẫu: 1/**/UNION/**/SELECT/**/flag,1,1/**/FROM/**/secrets
-        # Khi đó: name=flag, price=1, description=1 (số nguyên)
+        # Query to get products
+        # Products table structure: id, name, price, description
         sql = f"SELECT name, price, description FROM products WHERE id = {id_param}"
         try:
             cur = get_db().cursor()
             cur.execute(sql)
             row = cur.fetchone()
             if row:
-                # Chuyển row thành dict để dễ hiển thị
+                # Convert row to dict for easier display
                 item = dict(row)
         except Exception as e: 
             error = f"SQL Error: {str(e)}"
@@ -352,7 +347,7 @@ def level7():
     <div class="max-w-2xl mx-auto">
         <div class="text-center mb-8">
             <h2 class="text-xl text-amber-500 font-bold mb-2">SECURE PRODUCT VIEWER</h2>
-            <p class="text-slate-400 text-sm">Firewall Rule: <span class="text-red-400 font-mono">Block "Space" (ASCII 32)</span></p>
+            <p class="text-slate-400 text-sm">Firewall Rule: <span class="text-red-400 font-mono">Input filtering active</span></p>
         </div>
 
         <form method="GET" class="flex justify-center mb-10">
@@ -385,14 +380,14 @@ def level7():
         {% endif %}
     </div>
     """
-    return render_page(7, "Mục tiêu: Bypass WAF để lấy 'flag' từ bảng 'secrets'.", content, sql, id_param=id_param, item=item, error=error)
+    return render_page(7, "Objective: Bypass WAF to extract 'flag' from 'secrets' table.", content, sql, id_param=id_param, item=item, error=error)
 
 @app.route('/level8', methods=['GET', 'POST'])
 def level8():
     if request.method == 'POST':
         username = request.form.get('username', '')
-        # FIX: Chặn đăng ký trùng tên 'admin'
-        # Buộc user phải đăng ký: admin' -- 
+        # FIX: Block registration with existing 'admin' name
+        # Force user to register: admin' -- 
         if username.strip() == 'admin':
              return render_page(8, "Second Order.", f"<div class='text-red-500 text-center font-bold'>ERROR: User 'admin' already exists.</div>", "REGISTER_FAILED")
         
@@ -409,9 +404,9 @@ def level8():
             <form method="POST"><input name="username" class="w-full p-3 mb-2 bg-slate-900 border-amber-800" placeholder="Username"><button class="bg-amber-600 w-full py-3 font-bold text-black">REGISTER</button></form>
         </div>
         """
-        return render_page(8, "Mục tiêu: Chiếm quyền admin thông qua lỗ hổng Second Order.", content, "")
+        return render_page(8, "Objective: Gain admin privileges via Second Order injection.", content, "")
     else:
-        # VULN: Second order - Dữ liệu lấy từ DB (g.stored_user) được dùng lại mà không filter
+        # VULN: Second order - Data from DB (g.stored_user) reused without filtering
         sql = f"SELECT role FROM users WHERE username = '{stored_user}'"
         role = "guest"
         try:
@@ -435,28 +430,27 @@ def level9():
     search = request.args.get('q', '')
     results = []
     
-    # FILTER: Regex chặn "UNION SELECT" có khoảng trắng (space, tab, newline)
-    # Payload ' UNION/**/SELECT' sẽ bypass được vì \s không match /**/
+    # FILTER: Regex blocks "UNION SELECT" with whitespace (space, tab, newline)
     if re.search(r'union\s+select', search, re.IGNORECASE):
         msg = "<div class='text-red-500 text-center text-3xl font-bold p-8 border-2 border-red-500 bg-red-900/30'>WAF BLOCKED: 'UNION SELECT'</div>"
         return render_page(9, "WAF Bypass.", msg, "BLOCKED_BY_WAF")
 
-    # FIX: Query chính lấy 3 cột (name, description, price) để khớp với payload chuẩn (id, flag, 1)
+    # FIX: Main query selects 3 columns (name, description, price) to match standard payload (id, flag, 1)
     sql = f"SELECT name, description, price FROM products WHERE name LIKE '%{search}%'"
     try:
         cur = get_db().cursor()
         cur.execute(sql)
         results = cur.fetchall()
-    except Exception as e: results = [] # SQL Error thì không hiện gì
+    except Exception as e: results = [] # Hide SQL errors
 
     content = """
     <div class="max-w-lg mx-auto">
-        <div class="mb-4 text-red-400 text-center border border-red-900/50 p-2">Active Rule: Block "UNION [space] SELECT"</div>
+        <div class="mb-4 text-red-400 text-center border border-red-900/50 p-2">WAF Active: Keyword filtering enabled</div>
         <form method="GET" class="flex gap-2"><input type="text" name="q" value="{{ search }}" class="flex-1 p-2 bg-slate-900 border-amber-800" placeholder="Search"><button class="bg-amber-600 px-4 font-bold text-black">SEARCH</button></form>
         <ul class="mt-6 space-y-2 font-mono text-amber-200">{% for r in results %}<li class="p-2 bg-slate-900/50">{{ r[0] }} - {{ r[1] }}</li>{% endfor %}</ul>
     </div>
     """
-    return render_page(9, "Mục tiêu: Bypass WAF chặn từ khóa. (Lưu ý số lượng cột: 3)", content, sql, search=search, results=results)
+    return render_page(9, "Objective: Bypass WAF keyword filtering.", content, sql, search=search, results=results)
 
 @app.route('/level10', methods=['GET', 'POST'])
 def level10():
@@ -469,7 +463,7 @@ def level10():
         try:
             cur = get_db().cursor()
             cur.executescript(sql) # VULN: Stacked Queries
-            # Check pwned
+            # Check if pwned
             cur.execute("SELECT password FROM users WHERE username='admin'")
             if cur.fetchone()[0] == 'pwned': msg = "<div class='text-green-400 text-2xl font-bold'>SYSTEM PWNED! Password changed.</div>"
             else: msg = "<div class='text-slate-400 italic'>Query executed. Admin password unchanged.</div>"
@@ -482,7 +476,7 @@ def level10():
         <div class="mt-8 border p-4 border-amber-900 bg-black/80 min-h-[60px] flex items-center justify-center">{{ msg|safe }}</div>
     </div>
     """
-    return render_page(10, "Mục tiêu: Dùng dấu chấm phẩy ; để thực thi lệnh UPDATE password admin.", content, query_log, msg=msg)
+    return render_page(10, "Objective: Use semicolon ; to execute UPDATE command on admin password.", content, query_log, msg=msg)
 
 if __name__ == '__main__':
     app.run(debug=True, port=1111)

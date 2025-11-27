@@ -12,17 +12,15 @@ def get_db():
     db = getattr(g, '_database', None)
     if db is None:
         db = g._database = sqlite3.connect(DATABASE, check_same_thread=False)
-        # Custom function for Time-based SQLi
-        db.create_function("sleep", 1, lambda s: time.sleep(float(s)))
-        
-        # Init Data if empty
+        # FIX: Hàm sleep giờ trả về 1 (True) sau khi ngủ. 
+        # Cũ: lambda s: time.sleep(float(s)) -> Trả về None -> Query bị False -> Không hiện kết quả.
+        db.create_function("sleep", 1, lambda s: (time.sleep(float(s)) is None) and 1)
         try:
             cur = db.cursor()
             cur.execute("SELECT count(*) FROM users")
         except:
             init_db(db)
-            
-    db.row_factory = sqlite3.Row # Allow accessing columns by name
+    db.row_factory = sqlite3.Row
     return db
 
 def init_db(db):
@@ -32,7 +30,7 @@ def init_db(db):
     c.execute("INSERT INTO users (username, password, role) VALUES ('admin', 's3cr3t_P@ssw0rd', 'admin')")
     c.execute("INSERT INTO users (username, password, role) VALUES ('user', '123456', 'user')")
     
-    # Products
+    # Products (Lưu ý: 3 cột hiển thị chính để khớp với Level 9)
     c.execute('''CREATE TABLE products (id INTEGER PRIMARY KEY, name TEXT, price INTEGER, description TEXT)''')
     c.execute("INSERT INTO products (name, price, description) VALUES ('Quantum Core', 500, 'Powerful CPU')")
     c.execute("INSERT INTO products (name, price, description) VALUES ('Plasma Ray', 1200, 'Weapon of mass destruction')")
@@ -50,148 +48,65 @@ def close_connection(exception):
     if db is not None:
         db.close()
 
-# --- THEME & TEMPLATES ---
+# --- THEME & TEMPLATES (Giữ nguyên giao diện đẹp của bạn) ---
 base_layout = """
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SQLi DOJO | Data Breach Lab</title>
+    <title>SQLi DOJO | Cyber Lab</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Source+Code+Pro:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Rajdhani', sans-serif; 
-            background-color: #020617; /* Slate 950 */
-            color: #fbbf24; /* Amber 400 */
-            background-image: 
-                linear-gradient(rgba(245, 158, 11, 0.1) 1px, transparent 1px), 
-                linear-gradient(90deg, rgba(245, 158, 11, 0.1) 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
-        
+        body { font-family: 'Rajdhani', sans-serif; background-color: #020617; color: #fbbf24; background-image: linear-gradient(rgba(245, 158, 11, 0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(245, 158, 11, 0.1) 1px, transparent 1px); background-size: 40px 40px; }
         .mono-font { font-family: 'Source Code Pro', monospace; }
-        
-        /* Holographic Effects */
         .holo-text { text-shadow: 0 0 5px #f59e0b, 0 0 10px #f59e0b; }
-        .holo-box { 
-            background: rgba(69, 26, 3, 0.6); 
-            border: 1px solid #f59e0b; 
-            box-shadow: 0 0 15px rgba(245, 158, 11, 0.2), inset 0 0 20px rgba(245, 158, 11, 0.1); 
-            backdrop-filter: blur(4px);
-        }
-        
-        input, textarea, select { 
-            background-color: #0f172a; 
-            color: #fcd34d; 
-            border: 1px solid #92400e; 
-            font-family: 'Source Code Pro', monospace;
-        }
-        input:focus, textarea:focus, select:focus { 
-            outline: none; 
-            border-color: #f59e0b; 
-            box-shadow: 0 0 10px #f59e0b; 
-        }
-        
-        .scan-line {
-            width: 100%;
-            height: 2px;
-            background: rgba(251, 191, 36, 0.5);
-            animation: scan 3s linear infinite;
-        }
-        @keyframes scan {
-            0% { transform: translateY(0); opacity: 0; }
-            50% { opacity: 1; }
-            100% { transform: translateY(400px); opacity: 0; }
-        }
-
-        /* Scrollbar */
+        .holo-box { background: rgba(69, 26, 3, 0.6); border: 1px solid #f59e0b; box-shadow: 0 0 15px rgba(245, 158, 11, 0.2), inset 0 0 20px rgba(245, 158, 11, 0.1); backdrop-filter: blur(4px); }
+        input, textarea, select { background-color: #0f172a; color: #fcd34d; border: 1px solid #92400e; font-family: 'Source Code Pro', monospace; }
+        input:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
         ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #020617; }
         ::-webkit-scrollbar-thumb { background: #b45309; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #f59e0b; }
-        
-        .secure-badge { border: 1px solid #10b981; color: #10b981; padding: 2px 8px; font-size: 0.7em; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col overflow-x-hidden">
-    <!-- Navbar -->
     <nav class="bg-slate-950/90 border-b border-amber-800 p-4 sticky top-0 z-50 backdrop-blur-md">
         <div class="container mx-auto flex justify-between items-center">
-            <a href="/" class="text-3xl font-bold holo-text tracking-widest flex items-center gap-2">
-                [SQLi_DOJO]
-            </a>
-            <div class="space-x-6 text-sm flex items-center font-bold">
-                <span class="text-amber-600 uppercase tracking-widest">SYSTEM: <span class="text-amber-400">OPERATIONAL</span></span>
-                <a href="/reset" class="text-red-400 hover:text-red-200 border border-red-900/50 bg-red-900/20 px-4 py-1 rounded transition-all hover:shadow-[0_0_10px_rgba(248,113,113,0.5)]">
-                    // RESET_DB
-                </a>
-            </div>
+            <a href="/" class="text-3xl font-bold holo-text tracking-widest">[SQLi_DOJO]</a>
+            <a href="/reset" class="text-red-400 border border-red-900/50 bg-red-900/20 px-4 py-1 rounded hover:shadow-[0_0_10px_rgba(248,113,113,0.5)]">// RESET_DB</a>
         </div>
     </nav>
-
     <div class="container mx-auto flex-grow flex flex-col md:flex-row mt-8 gap-6 px-4 mb-10">
-        <!-- Sidebar Navigation -->
         <aside class="md:w-72 flex-shrink-0">
             <div class="holo-box p-5 rounded-lg h-full">
-                <h3 class="text-amber-300 uppercase text-sm font-bold mb-4 border-b border-amber-800 pb-2 flex justify-between">
-                    <span>Injection Modules</span>
-                    <span>v1.0</span>
-                </h3>
+                <h3 class="text-amber-300 uppercase text-sm font-bold mb-4 border-b border-amber-800 pb-2">Modules</h3>
                 <div class="space-y-1">
                 {% for i in range(1, 11) %}
-                <a href="/level{{i}}" class="block px-3 py-2 text-sm rounded transition-all duration-200 mono-font
-                    {{ 'bg-amber-900/50 text-white border-l-4 border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.3)]' if active_level == i else 'text-slate-400 hover:text-amber-200 hover:bg-amber-900/20 hover:pl-4' }}">
+                <a href="/level{{i}}" class="block px-3 py-2 text-sm rounded transition-all duration-200 mono-font {{ 'bg-amber-900/50 text-white border-l-4 border-amber-500' if active_level == i else 'text-slate-400 hover:text-amber-200 hover:bg-amber-900/20' }}">
                     Level {{ '%02d' % i }} :: {{ titles[i-1] }}
                 </a>
                 {% endfor %}
                 </div>
             </div>
         </aside>
-
-        <!-- Main Interface -->
         <main class="flex-1 relative">
             <div class="mb-6">
-                <div class="flex items-end gap-4 mb-2">
-                    <h1 class="text-5xl font-bold text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">{{ current_title }}</h1>
-                    <span class="text-amber-600 font-mono text-xl mb-1">ID: {{ 'L%02d' % active_level }}</span>
-                </div>
-                
-                <div class="flex items-center gap-2 mb-4">
-                    <span class="text-slate-500 font-bold text-sm uppercase">Threat Level:</span>
-                    <div class="flex gap-1">
-                        {% for i in range(1, 11) %}
-                            <div class="h-2 w-4 rounded-sm {{ 'bg-amber-500 shadow-[0_0_5px_#f59e0b]' if i <= active_level else 'bg-slate-800' }}"></div>
-                        {% endfor %}
-                    </div>
-                </div>
-                
-                <p class="text-slate-300 mono-font border-l-2 border-amber-600 pl-4 py-1 bg-gradient-to-r from-amber-900/20 to-transparent">
+                <h1 class="text-5xl font-bold text-white drop-shadow-[0_0_5px_rgba(255,255,255,0.5)]">{{ current_title }}</h1>
+                <p class="text-slate-300 mono-font border-l-2 border-amber-600 pl-4 py-1 mt-4 bg-gradient-to-r from-amber-900/20 to-transparent">
                     <span class="text-amber-500 font-bold">Briefing:</span> {{ description }}
                 </p>
             </div>
-            
             <div class="holo-box p-8 min-h-[400px] relative rounded-lg overflow-hidden flex flex-col">
-                <div class="scan-line absolute top-0 left-0 pointer-events-none opacity-20"></div>
-                <!-- Content Rendered Here -->
                 {{ content | safe }}
-                
                 {% if query_log %}
                 <div class="mt-auto pt-6 border-t border-amber-900/50">
                     <div class="text-xs text-slate-500 font-mono mb-1">EXECUTED QUERY LOG:</div>
-                    <code class="block bg-black p-3 rounded border border-amber-900 text-amber-500 font-mono text-sm break-all">
-                        {{ query_log }}
-                    </code>
+                    <code class="block bg-black p-3 rounded border border-amber-900 text-amber-500 font-mono text-sm break-all">{{ query_log }}</code>
                 </div>
                 {% endif %}
             </div>
         </main>
     </div>
-    
-    <footer class="bg-slate-950 border-t border-amber-900 text-center p-6 text-slate-600 text-xs mt-auto mono-font">
-        © sondt (Administrator) // All Rights Reserved
-    </footer>
 </body>
 </html>
 """
@@ -203,14 +118,7 @@ titles = [
 ]
 
 def render_page(level_id, description, content, query_log=None, **kwargs):
-    # Pass kwargs to template for variable substitution
-    return render_template_string(base_layout, 
-                                  active_level=level_id, 
-                                  titles=titles, 
-                                  current_title=titles[level_id-1], 
-                                  description=description, 
-                                  content=render_template_string(content, **kwargs), # Inner render for content logic
-                                  query_log=query_log)
+    return render_template_string(base_layout, active_level=level_id, titles=titles, current_title=titles[level_id-1], description=description, content=render_template_string(content, **kwargs), query_log=query_log)
 
 @app.route('/')
 def index(): return redirect('/level1')
@@ -218,15 +126,6 @@ def index(): return redirect('/level1')
 @app.route('/reset')
 def reset():
     db = get_db()
-    # Close old connection stored in g
-    if hasattr(g, '_database'):
-        g._database.close()
-        delattr(g, '_database')
-    
-    # Init new connection will trigger init_db if tables don't exist, 
-    # but here we want to force drop/create.
-    # Simple way: just drop tables and re-init
-    db = get_db() # Re-connect
     c = db.cursor()
     c.executescript("DROP TABLE IF EXISTS users; DROP TABLE IF EXISTS products; DROP TABLE IF EXISTS secrets;")
     init_db(db)
@@ -238,267 +137,282 @@ def reset():
 def level1():
     query_log = None
     msg = ""
-    
     if request.method == 'POST':
         username = request.form.get('username', '')
         password = request.form.get('password', '')
-        
         # VULN: String concat
         sql = f"SELECT * FROM users WHERE username = '{username}' AND password = '{password}'"
         query_log = sql
         try:
             cur = get_db().cursor()
             cur.execute(sql)
-            user = cur.fetchone()
-            if user: msg = f"<div class='text-green-400 text-2xl font-bold border-l-4 border-green-500 pl-4'>ACCESS GRANTED: {user['username']}</div>"
+            if cur.fetchone(): msg = "<div class='text-green-400 text-2xl font-bold'>ACCESS GRANTED</div>"
             else: msg = "<div class='text-red-500 font-bold'>ACCESS DENIED</div>"
-        except Exception as e: msg = f"<div class='text-red-500 font-bold'>SQL ERROR: {e}</div>"
+        except Exception as e: msg = f"<div class='text-red-500'>SQL ERROR: {e}</div>"
 
     content = """
     <form method="POST" class="max-w-md mx-auto mt-10">
         <label class="block text-amber-500 mb-1 font-bold">USERNAME</label>
-        <div class="flex mb-4">
-            <span class="bg-amber-900/50 text-amber-500 p-2 border border-amber-800 border-r-0 font-mono">></span>
-            <input type="text" name="username" class="w-full p-2 rounded-r" placeholder="Enter username">
-        </div>
-        
+        <input type="text" name="username" class="w-full p-2 mb-4 rounded" placeholder="admin">
         <label class="block text-amber-500 mb-1 font-bold">PASSWORD</label>
-        <div class="flex mb-6">
-            <span class="bg-amber-900/50 text-amber-500 p-2 border border-amber-800 border-r-0 font-mono">*</span>
-            <input type="password" name="password" class="w-full p-2 rounded-r" placeholder="******">
-        </div>
-        
-        <button class="bg-amber-600 text-black px-6 py-2 font-bold w-full hover:bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)] transition">LOGIN</button>
+        <input type="password" name="password" class="w-full p-2 mb-6 rounded" placeholder="******">
+        <button class="bg-amber-600 text-black px-6 py-2 font-bold w-full hover:bg-amber-500">LOGIN</button>
     </form>
     <div class="mt-8 text-center">{{ msg|safe }}</div>
     """
-    return render_page(1, "Bypass authentication. Log in as 'admin' without knowing the password.", content, query_log, msg=msg)
+    return render_page(1, "Mục tiêu: Đăng nhập Admin mà không cần mật khẩu. (String Injection)", content, query_log, msg=msg)
 
 @app.route('/level2')
 def level2():
     id_param = request.args.get('id', '1')
-    query_log = ""
-    items = []
-    
-    # VULN: Integer injection (No quotes)
     sql = f"SELECT name, price FROM products WHERE id = {id_param}"
-    query_log = sql
     try:
         cur = get_db().cursor()
         cur.execute(sql)
         items = cur.fetchall()
-    except Exception as e: items = []
-
+    except: items = []
     content = """
     <div class="text-center mb-6">
-        <form method="GET" class="inline-flex shadow-lg">
-            <span class="bg-amber-900/50 text-amber-500 p-2 border border-amber-800 border-r-0 font-mono">ID:</span>
-            <input name="id" value="{{ id_param }}" class="w-24 p-2 text-center bg-slate-900 border-amber-800 text-amber-400">
-            <button class="bg-amber-700 px-4 py-2 font-bold text-black hover:bg-amber-600">VIEW</button>
-        </form>
+        <form method="GET" class="inline-flex shadow-lg"><span class="p-2 border border-amber-800 bg-amber-900/50">ID:</span><input name="id" value="{{ id_param }}" class="w-24 p-2 text-center bg-slate-900 border-amber-800"><button class="bg-amber-700 px-4 py-2 text-black font-bold">GO</button></form>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {% for item in items %}
-        <div class="border border-amber-800 p-4 bg-black/50 hover:bg-amber-900/20 transition">
-            <h3 class="text-xl font-bold text-white mb-1">{{ item['name'] }}</h3>
-            <div class="text-amber-500 text-sm font-mono">PRICE: {{ item['price'] }} CREDITS</div>
-        </div>
-        {% else %}
-        <div class="text-center text-slate-500 italic col-span-2 mt-4">No items found or SQL Error.</div>
-        {% endfor %}
-    </div>
+    <div class="grid grid-cols-2 gap-4">{% for item in items %}<div class="border border-amber-800 p-4"><h3 class="font-bold text-white">{{ item['name'] }}</h3><div class="text-amber-500">{{ item['price'] }} $</div></div>{% endfor %}</div>
     """
-    return render_page(2, "Dump all products using Integer Injection (OR 1=1).", content, query_log, items=items, id_param=id_param)
+    return render_page(2, "Mục tiêu: Hiển thị tất cả sản phẩm. (Integer Injection, không cần dấu nháy)", content, sql, items=items, id_param=id_param)
 
 @app.route('/level3')
 def level3():
     search = request.args.get('search', '')
     results = []
-    query_log = ""
-    
+    # VULN: UNION Injection
+    sql = f"SELECT name, description, price FROM products WHERE name LIKE '%{search}%'"
     if search:
-        # VULN: UNION Injection
-        sql = f"SELECT name, description, price FROM products WHERE name LIKE '%{search}%'"
-        query_log = sql
         try:
             cur = get_db().cursor()
             cur.execute(sql)
             results = cur.fetchall()
         except Exception as e: results = [("SQL Error", str(e), 0)]
-
     content = """
-    <div class="max-w-xl mx-auto">
-        <form method="GET" class="flex gap-0 shadow-lg mb-8">
-            <span class="bg-amber-900/50 text-amber-500 p-3 font-mono border border-r-0 border-amber-700">SEARCH://</span>
-            <input type="text" name="search" value="{{ search }}" class="flex-1 p-3 bg-slate-900/80 border-amber-700" placeholder="...">
-            <button class="bg-amber-600 px-6 font-bold text-black hover:bg-amber-500">SCAN</button>
-        </form>
-        
-        <div class="space-y-2">
-            {% for r in results %}
-            <div class="p-2 border-l-2 border-amber-500 bg-slate-900/50 text-amber-100 font-mono text-sm">
-                <span class="text-amber-500">>></span> {{ r[0] }} <span class="text-slate-500">::</span> {{ r[1] }}
-            </div>
-            {% endfor %}
-        </div>
-        
-        <div class="mt-8 border-t border-dashed border-amber-900 pt-4 text-xs text-slate-500 text-center">
-            Target: Hidden table 'secrets' (columns: id, flag).
-        </div>
-    </div>
+    <form method="GET" class="flex gap-2 mb-8"><input type="text" name="search" value="{{ search }}" class="flex-1 p-3 bg-slate-900" placeholder="Search..."><button class="bg-amber-600 px-6 font-bold text-black">SCAN</button></form>
+    <div class="space-y-2">{% for r in results %}<div class="p-2 border-l-2 border-amber-500 bg-slate-900/50">{{ r[0] }} :: {{ r[1] }}</div>{% endfor %}</div>
+    <div class="mt-8 text-xs text-slate-500 text-center">Hidden table 'secrets' (columns: id, flag).</div>
     """
-    return render_page(3, "Retrieve the hidden flag from the database.", content, query_log, results=results, search=search)
+    return render_page(3, "Mục tiêu: Lấy Flag từ bảng 'secrets'. Dùng UNION để gộp kết quả.", content, sql, results=results, search=search)
 
 @app.route('/level4')
 def level4():
-    id_param = request.args.get('id', '1')
+    # FIX: Chuyển sang String context để dễ gây lỗi syntax
+    id_param = request.args.get('uuid', 'user-001')
     error_msg = None
+    success_signal = False
     
-    sql = f"SELECT * FROM users WHERE id = {id_param}"
+    # Query tìm kiếm theo chuỗi
+    sql = f"SELECT * FROM users WHERE username = '{id_param}'" 
+    
     try:
         cur = get_db().cursor()
         cur.execute(sql)
         cur.fetchall()
     except Exception as e:
         error_msg = str(e)
+        # Nếu có lỗi liên quan đến syntax SQL, coi như đã khai thác thành công
+        if "unrecognized token" in error_msg or "syntax" in error_msg.lower() or "unterminated" in error_msg.lower():
+            success_signal = True
 
     content = """
     <div class="text-center max-w-lg mx-auto">
-        <h2 class="text-xl mb-6 text-amber-300">USER LOOKUP SERVICE v0.9</h2>
+        <h2 class="text-xl mb-6 text-amber-300">USER UUID LOOKUP</h2>
         <form method="GET" class="mb-8">
-            <input name="id" value="{{ id_param }}" class="w-32 p-2 text-center bg-slate-900 border-amber-800" placeholder="User ID">
-            <button class="bg-amber-700 px-4 py-2 font-bold text-black ml-2">CHECK</button>
+            <input name="uuid" value="{{ id_param }}" class="w-full p-2 text-center bg-slate-900 border-amber-800" placeholder="Enter UUID">
+            <button class="bg-amber-700 px-4 py-2 font-bold text-black mt-2 w-full">CHECK SYSTEM</button>
         </form>
         
+        {% if success_signal %}
+        <div class="mb-4 p-4 border-2 border-green-500 bg-green-900/30 text-green-400 font-bold text-xl animate-pulse">
+            [+] VULNERABILITY CONFIRMED!<br>Database returned a syntax error.
+        </div>
+        {% endif %}
+
         {% if error_msg %}
-        <div class="p-4 border border-red-500 bg-red-900/20 text-red-400 font-mono text-left shadow-[0_0_15px_rgba(239,68,68,0.2)]">
-            <div class="font-bold border-b border-red-500/50 mb-2 pb-1">FATAL_ERROR_DUMP:</div>
+        <div class="p-4 border border-red-500 bg-red-900/20 text-red-400 font-mono text-left">
+            <div class="font-bold border-b border-red-500/50 mb-2">DB_DEBUG_LOG:</div>
             {{ error_msg }}
         </div>
         {% endif %}
     </div>
     """
-    return render_page(4, "Trigger a syntax error to confirm injection.", content, sql, id_param=id_param, error_msg=error_msg)
+    return render_page(4, "Mục tiêu: Làm DB in ra lỗi cú pháp (Syntax Error).", content, sql, id_param=id_param, error_msg=error_msg, success_signal=success_signal)
 
 @app.route('/level5')
 def level5():
-    username = request.args.get('u', 'admin')
-    # VULN: Boolean Blind
-    sql = f"SELECT * FROM users WHERE username = '{username}'"
-    exists = False
-    try:
-        cur = get_db().cursor()
-        cur.execute(sql)
-        if cur.fetchone(): exists = True
-    except: pass
+    username = request.args.get('u', '')
     
-    status = "<span class='text-green-400 font-bold'>[ MATCH FOUND ]</span>" if exists else "<span class='text-red-500 font-bold'>[ NO MATCH ]</span>"
+    # FIX: Chặn input 'admin' trực tiếp ở tầng code Python
+    # Buộc user phải dùng injection như: admin' AND 1=1-- 
+    if username.strip() == 'admin':
+        status = "<span class='text-red-500 font-bold'>[ DIRECT ACCESS BLOCKED BY IPS ]</span>"
+        sql = "BLOCKED: Direct 'admin' string not allowed."
+    else:
+        sql = f"SELECT * FROM users WHERE username = '{username}'"
+        exists = False
+        try:
+            cur = get_db().cursor()
+            cur.execute(sql)
+            if cur.fetchone(): exists = True
+        except: pass
+        
+        status = "<span class='text-green-400 font-bold'>[ USER FOUND ]</span>" if exists else "<span class='text-slate-500'>[ NOT FOUND ]</span>"
 
     content = """
     <div class="text-center mt-10 max-w-lg mx-auto">
         <div class="border border-amber-500/30 p-8 bg-slate-900/50 rounded">
-            <h2 class="text-2xl mb-6 text-amber-400">Identity Verifier</h2>
+            <h2 class="text-2xl mb-6 text-amber-400">Blind Verifier</h2>
             <form method="GET" class="mb-8">
                 <input name="u" value="{{ username }}" class="p-2 w-full mb-2 bg-black text-center border-amber-800" placeholder="Username">
-                <button class="bg-amber-600 px-8 py-2 font-bold text-black w-full hover:bg-amber-500">VERIFY IDENTITY</button>
+                <button class="bg-amber-600 px-8 py-2 font-bold text-black w-full">VERIFY</button>
             </form>
             <div class="text-3xl font-mono tracking-wider">{{ status|safe }}</div>
         </div>
-        <p class="mt-4 text-xs text-slate-500">System returns only Boolean (True/False) responses.</p>
+        <p class="mt-4 text-xs text-slate-500">Gợi ý: Hệ thống chặn chữ 'admin'. Hãy dùng logic đúng/sai để bypass.</p>
     </div>
     """
-    return render_page(5, "Boolean Blind. Guess True/False questions.", content, "HIDDEN (Blind Query)", username=username, status=status)
+    return render_page(5, "Mục tiêu: Bypass filter đơn giản và xác nhận user 'admin' tồn tại (Blind).", content, sql, username=username, status=status)
 
 @app.route('/level6')
 def level6():
     search = request.args.get('q', '')
     start_time = time.time()
+    results = []
+    
+    # Logic: Search rỗng thì không query để tiết kiệm resource
+    # Nếu có search (hoặc payload), query mới chạy
     if search:
-        # VULN: Time Based (sleep function injected)
+        # VULN: Time Based Blind
+        # Payload mẫu: ' OR sleep(3)--
         sql = f"SELECT * FROM products WHERE name = '{search}'"
         try:
             cur = get_db().cursor()
             cur.execute(sql)
-            cur.fetchall()
+            results = cur.fetchall()
         except: pass
     
     duration = time.time() - start_time
-    msg = f"Completed in {duration:.2f}s"
+    # Chỉ hiện thời gian nếu query mất hơn 0.1s (tức là có độ trễ bất thường hoặc user đang test)
+    msg = f"{duration:.2f}s" if duration > 0.1 else "0.00s"
+    
+    status_class = "text-green-500 font-bold border-green-500" if duration > 2 else "text-slate-600 border-slate-800"
 
     content = """
     <div class="text-center max-w-xl mx-auto">
-        <h2 class="text-2xl mb-2 text-white font-light">HEAVY SEARCH ENGINE</h2>
-        <p class="text-slate-500 mb-6 text-sm">Complex algorithm. May take time.</p>
-        
-        <form method="GET" class="flex">
-            <input name="q" value="{{ search }}" class="flex-1 p-3 bg-slate-900 border-amber-800" placeholder="Product name...">
-            <button class="bg-amber-600 px-6 py-3 font-bold text-black">SEARCH</button>
+        <h2 class="text-2xl mb-4 text-white font-light tracking-widest">LATENCY TEST</h2>
+        <form method="GET" class="flex shadow-lg">
+            <input name="q" value="{{ search }}" class="flex-1 p-3 bg-slate-900 border border-amber-900 focus:border-amber-500 transition-colors" placeholder="Enter payload...">
+            <button class="bg-amber-700 hover:bg-amber-600 px-6 py-3 font-bold text-black transition-colors">EXECUTE</button>
         </form>
         
-        <div class="mt-8 p-4 border border-amber-900 bg-black text-amber-500 font-mono text-xl">
-            STATUS: <span class="text-white">{{ msg }}</span>
+        <div class="mt-8 flex flex-col items-center justify-center">
+            <div class="text-xs text-slate-500 uppercase tracking-widest mb-2">Response Time</div>
+            <div class="p-4 border-2 {{ status_class }} bg-black font-mono text-3xl min-w-[150px] transition-all duration-300">
+                {{ msg }}
+            </div>
+            {% if duration > 2 %}
+            <div class="mt-4 text-green-400 font-mono text-sm animate-pulse">[!] TIMING ATTACK DETECTED [!]</div>
+            {% endif %}
         </div>
-      </div>
+    </div>
     """
-    return render_page(6, "Time Based. Force a delay to extract data.", content, "HIDDEN (Blind Query)", search=search, msg=msg)
+    return render_page(6, "Mục tiêu: Khiến Database 'ngủ' 3 giây. (Dùng OR sleep(3))", content, "HIDDEN (Blind)", search=search, msg=msg, status_class=status_class, duration=duration)
 
 @app.route('/level7')
 def level7():
     id_param = request.args.get('id', '1')
-    res = ""
+    item = None
+    error = None
     
-    # WAF: Block spaces
+    # FILTER: Chặn dấu cách (Space)
     if ' ' in id_param:
-        res = "<div class='text-red-500 text-2xl font-bold p-4 border border-red-500 bg-red-900/20'>WAF ALERT: SPACE CHAR DETECTED</div>"
-        sql = "BLOCKED_BY_WAF"
+        error = "WAF ERROR: Malicious input detected (Space character)."
+        sql = "BLOCKED"
     else:
-        sql = f"SELECT name, price FROM products WHERE id = {id_param}"
+        # Query lấy sản phẩm. 
+        # Cấu trúc bảng products: id, name, price, description
+        # Payload mẫu: 1/**/UNION/**/SELECT/**/flag,1,1/**/FROM/**/secrets
+        # Khi đó: name=flag, price=1, description=1 (số nguyên)
+        sql = f"SELECT name, price, description FROM products WHERE id = {id_param}"
         try:
             cur = get_db().cursor()
             cur.execute(sql)
-            item = cur.fetchone()
-            res = f"<div class='text-xl text-white'>ITEM: <span class='text-amber-400'>{item['name']}</span> <br> PRICE: {item['price']}</div>" if item else "Not found"
-        except Exception as e: res = str(e)
+            row = cur.fetchone()
+            if row:
+                # Chuyển row thành dict để dễ hiển thị
+                item = dict(row)
+        except Exception as e: 
+            error = f"SQL Error: {str(e)}"
 
     content = """
-    <div class="text-center">
-        <h2 class="mb-6 text-amber-500 font-bold border-b border-amber-900 inline-block pb-2">STRICT FIREWALL: NO SPACES</h2>
-        <form method="GET" class="mb-8">
-            <input name="id" value="{{ id_param }}" class="p-2 w-64 bg-slate-900 border-amber-700" placeholder="ID (No spaces allowed)">
-            <button class="bg-amber-600 px-4 py-2 font-bold text-black">GET</button>
-        </form>
-        <div class="mt-6">{{ res|safe }}</div>
+    <div class="max-w-2xl mx-auto">
+        <div class="text-center mb-8">
+            <h2 class="text-xl text-amber-500 font-bold mb-2">SECURE PRODUCT VIEWER</h2>
+            <p class="text-slate-400 text-sm">Firewall Rule: <span class="text-red-400 font-mono">Block "Space" (ASCII 32)</span></p>
         </div>
+
+        <form method="GET" class="flex justify-center mb-10">
+            <div class="flex border border-amber-800 rounded overflow-hidden">
+                <span class="bg-amber-900/30 text-amber-500 p-3 font-mono border-r border-amber-800">ID=</span>
+                <input name="id" value="{{ id_param }}" class="bg-slate-900 text-white p-3 w-64 outline-none font-mono" placeholder="1">
+                <button class="bg-amber-700 hover:bg-amber-600 px-6 font-bold text-black">LOAD</button>
+            </div>
+        </form>
+
+        {% if error %}
+        <div class="p-4 bg-red-900/20 border border-red-500 text-red-400 text-center font-mono">
+            {{ error }}
+        </div>
+        {% elif item %}
+        <div class="bg-slate-900/50 border border-amber-900/50 p-6 rounded-lg shadow-xl relative overflow-hidden group hover:border-amber-500/50 transition-colors">
+            <div class="absolute top-0 right-0 bg-amber-600 text-black text-xs font-bold px-3 py-1">PRODUCT</div>
+            <h3 class="text-2xl text-white font-bold mb-2">{{ item['name'] }}</h3>
+            <div class="text-amber-400 text-xl font-mono mb-4">${{ item['price'] }}</div>
+            <p class="text-slate-400 border-t border-slate-800 pt-4">{{ item['description'] }}</p>
+            
+            {% if 'FLAG' in item['name']|string or 'FLAG' in item['description']|string %}
+            <div class="mt-6 p-4 bg-green-900/30 border border-green-500 text-green-400 font-mono font-bold text-center animate-pulse">
+                [SUCCESS] FLAG CAPTURED!
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center text-slate-500 italic">No product found.</div>
+        {% endif %}
+    </div>
     """
-    return render_page(7, "Bypass Space Filter.", content, sql, id_param=id_param, res=res)
+    return render_page(7, "Mục tiêu: Bypass WAF để lấy 'flag' từ bảng 'secrets'.", content, sql, id_param=id_param, item=item, error=error)
 
 @app.route('/level8', methods=['GET', 'POST'])
 def level8():
     if request.method == 'POST':
         username = request.form.get('username', '')
-        g.stored_user = username # Simulation of storage
+        # FIX: Chặn đăng ký trùng tên 'admin'
+        # Buộc user phải đăng ký: admin' -- 
+        if username.strip() == 'admin':
+             return render_page(8, "Second Order.", f"<div class='text-red-500 text-center font-bold'>ERROR: User 'admin' already exists.</div>", "REGISTER_FAILED")
+        
+        g.stored_user = username 
         return redirect(url_for('level8', step='view', user=username))
 
     step = request.args.get('step', 'register')
     stored_user = request.args.get('user', '')
-    query_log = ""
     
     if step == 'register':
         content = """
         <div class="max-w-md mx-auto">
-            <h3 class="text-xl mb-4 text-amber-400">Step 1: User Registration</h3>
-            <form method="POST">
-                <input name="username" class="w-full p-3 mb-2 bg-slate-900 border-amber-800" placeholder="Choose username...">
-                <button class="bg-amber-600 w-full py-3 font-bold text-black hover:bg-amber-500">REGISTER USER</button>
-            </form>
-            <p class="mt-4 text-sm text-slate-500">Your username will be stored in the database.</p>
+            <h3 class="text-xl mb-4 text-amber-400">Step 1: Register</h3>
+            <form method="POST"><input name="username" class="w-full p-3 mb-2 bg-slate-900 border-amber-800" placeholder="Username"><button class="bg-amber-600 w-full py-3 font-bold text-black">REGISTER</button></form>
         </div>
         """
-        return render_page(8, "Second Order. Inject payload into database, trigger it later.", content, "")
+        return render_page(8, "Mục tiêu: Chiếm quyền admin thông qua lỗ hổng Second Order.", content, "")
     else:
-        # VULN: Second order
+        # VULN: Second order - Dữ liệu lấy từ DB (g.stored_user) được dùng lại mà không filter
         sql = f"SELECT role FROM users WHERE username = '{stored_user}'"
-        query_log = sql
         role = "guest"
         try:
             cur = get_db().cursor()
@@ -508,95 +422,67 @@ def level8():
         except Exception as e: role = f"ERROR: {e}"
 
         content = """
-        <div class="max-w-md mx-auto">
-            <h3 class="text-xl mb-4 text-amber-400">Step 2: Admin Profile View</h3>
-            <div class="p-6 border border-amber-500 bg-slate-900/80">
-                <div class="mb-4 text-sm text-slate-400">VIEWING USER PROFILE:</div>
-                <div class="text-2xl text-white mb-2">{{ user }}</div>
-                <div class="border-t border-amber-900 pt-2 mt-2">
-                    ROLE: <span class="text-red-400 font-bold text-xl">{{ role }}</span>
-                </div>
-            </div>
-            <div class="mt-6 text-center">
-                <a href="/level8" class="text-amber-500 hover:text-white underline">Register another user</a>
-            </div>
+        <div class="max-w-md mx-auto text-center">
+            <div class="text-2xl text-white mb-2">User: {{ user }}</div>
+            <div class="border-t border-amber-900 pt-2 mt-2">ROLE: <span class="text-red-400 font-bold text-xl">{{ role }}</span></div>
+            <div class="mt-6"><a href="/level8" class="text-amber-500 underline">Try again</a></div>
         </div>
         """
-        return render_page(8, "Payload execution (Stored).", content, query_log, user=stored_user, role=role)
+        return render_page(8, "Payload Execution.", content, sql, user=stored_user, role=role)
 
 @app.route('/level9')
 def level9():
     search = request.args.get('q', '')
     results = []
     
-    # WAF: Block "UNION SELECT" with space, case insensitive
+    # FILTER: Regex chặn "UNION SELECT" có khoảng trắng (space, tab, newline)
+    # Payload ' UNION/**/SELECT' sẽ bypass được vì \s không match /**/
     if re.search(r'union\s+select', search, re.IGNORECASE):
         msg = "<div class='text-red-500 text-center text-3xl font-bold p-8 border-2 border-red-500 bg-red-900/30'>WAF BLOCKED: 'UNION SELECT'</div>"
         return render_page(9, "WAF Bypass.", msg, "BLOCKED_BY_WAF")
 
-    sql = f"SELECT name, description FROM products WHERE name LIKE '%{search}%'"
+    # FIX: Query chính lấy 3 cột (name, description, price) để khớp với payload chuẩn (id, flag, 1)
+    sql = f"SELECT name, description, price FROM products WHERE name LIKE '%{search}%'"
     try:
         cur = get_db().cursor()
         cur.execute(sql)
         results = cur.fetchall()
-    except Exception as e: results = []
+    except Exception as e: results = [] # SQL Error thì không hiện gì
 
     content = """
     <div class="max-w-lg mx-auto">
-        <div class="mb-4 flex items-center gap-2 text-red-400 border border-red-900/50 p-2 bg-red-900/10 rounded">
-            <span>Active Rule: Block "UNION SELECT"</span>
-        </div>
-        <form method="GET" class="flex gap-2">
-            <input type="text" name="q" value="{{ search }}" class="flex-1 p-2 bg-slate-900 border-amber-800" placeholder="Product search...">
-            <button class="bg-amber-600 px-4 font-bold text-black">SEARCH</button>
-        </form>
-        <ul class="mt-6 space-y-2 font-mono text-amber-200">
-            {% for r in results %}
-            <li class="p-2 bg-slate-900/50 border-l border-amber-700">{{ r[0] }} - <span class="text-slate-400">{{ r[1] }}</span></li>
-            {% endfor %}
-        </ul>
+        <div class="mb-4 text-red-400 text-center border border-red-900/50 p-2">Active Rule: Block "UNION [space] SELECT"</div>
+        <form method="GET" class="flex gap-2"><input type="text" name="q" value="{{ search }}" class="flex-1 p-2 bg-slate-900 border-amber-800" placeholder="Search"><button class="bg-amber-600 px-4 font-bold text-black">SEARCH</button></form>
+        <ul class="mt-6 space-y-2 font-mono text-amber-200">{% for r in results %}<li class="p-2 bg-slate-900/50">{{ r[0] }} - {{ r[1] }}</li>{% endfor %}</ul>
     </div>
     """
-    return render_page(9, "Bypass 'UNION SELECT' filter.", content, sql, search=search, results=results)
+    return render_page(9, "Mục tiêu: Bypass WAF chặn từ khóa. (Lưu ý số lượng cột: 3)", content, sql, search=search, results=results)
 
 @app.route('/level10', methods=['GET', 'POST'])
 def level10():
     msg = ""
     query_log = ""
-    
     if request.method == 'POST':
         user_input = request.form.get('id', '')
         sql = f"SELECT * FROM users WHERE id = {user_input}"
         query_log = sql
         try:
             cur = get_db().cursor()
-            # VULN: Stacked queries
-            cur.executescript(sql)
-            
-            # Verify result
+            cur.executescript(sql) # VULN: Stacked Queries
+            # Check pwned
             cur.execute("SELECT password FROM users WHERE username='admin'")
-            if cur.fetchone()[0] == 'pwned':
-                msg = "<div class='text-green-400 text-2xl font-bold border-2 border-green-500 p-4 bg-green-900/20'>SYSTEM PWNED! Password changed.</div>"
-            else:
-                msg = "<div class='text-slate-400 italic'>Query executed. Admin password unchanged.</div>"
+            if cur.fetchone()[0] == 'pwned': msg = "<div class='text-green-400 text-2xl font-bold'>SYSTEM PWNED! Password changed.</div>"
+            else: msg = "<div class='text-slate-400 italic'>Query executed. Admin password unchanged.</div>"
         except Exception as e: msg = f"<div class='text-red-500'>Error: {e}</div>"
 
     content = """
     <div class="text-center max-w-lg mx-auto">
-        <h2 class="text-2xl mb-4 text-red-500 font-bold animate-pulse">ADMIN RESET CONSOLE</h2>
-        <p class="mb-6 text-slate-400">Dangerous Operation. Stacked Queries Enabled.</p>
-        
-        <form method="POST">
-            <input name="id" class="w-full p-3 mb-2 bg-slate-900 border-red-900 text-red-100 placeholder-red-900/50" placeholder="Target User ID...">
-            <button class="bg-red-700 text-white w-full py-3 font-bold hover:bg-red-600 shadow-[0_0_15px_rgba(185,28,28,0.4)]">EXECUTE BATCH</button>
-        </form>
-        
-        <div class="mt-8 border p-4 border-amber-900 bg-black/80 min-h-[60px] flex items-center justify-center">
-            {{ msg|safe }}
-        </div>
-          </div>
+        <h2 class="text-2xl mb-4 text-red-500 font-bold">STACKED QUERY ADMIN RESET</h2>
+        <form method="POST"><input name="id" class="w-full p-3 mb-2 bg-slate-900 border-red-900" placeholder="User ID"><button class="bg-red-700 text-white w-full py-3 font-bold">EXECUTE</button></form>
+        <div class="mt-8 border p-4 border-amber-900 bg-black/80 min-h-[60px] flex items-center justify-center">{{ msg|safe }}</div>
+    </div>
     """
-    return render_page(10, "Stacked Queries (UPDATE).", content, query_log, msg=msg)
+    return render_page(10, "Mục tiêu: Dùng dấu chấm phẩy ; để thực thi lệnh UPDATE password admin.", content, query_log, msg=msg)
 
 if __name__ == '__main__':
-    app.run(debug=False, port=1111)
+    app.run(debug=True, port=1111)

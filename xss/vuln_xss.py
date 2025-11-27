@@ -434,22 +434,41 @@ def level9():
                 <div id="greeting" class="text-3xl text-white font-bold">Hello, Guest!</div>
             </div>
             
-          </div>
+            <div class="mt-6 text-slate-500 text-sm">
+                <p>Try changing the name in the URL bar after the <code>#</code> character.</p>
+            </div>
+        </div>
 
         <script>
             function parseTemplate() {
+                // Lấy phần sau dấu #
                 var hash = decodeURIComponent(window.location.hash.substring(1));
+                
+                // Nếu hash bắt đầu bằng name=
                 if (hash.startsWith("name=")) {
                     var name = hash.split("=")[1];
                     var template = "Hello, " + name + "!";
+                    // VULN: Template engine tự chế, dùng eval()
                     var rendered = template.replace(/{{\s*(.*?)\s*}}/g, function(match, code) {
                         try { return eval(code); } catch(e) { return "ERROR"; }
                     });
                     document.getElementById('greeting').innerHTML = rendered;
                 }
             }
+
+            // LOGIC MỚI: Tự động thêm #name=admin nếu URL chưa có hash
+            window.addEventListener('load', function() {
+                if(!window.location.hash) {
+                    // Gán hash, trình duyệt sẽ không reload mà chỉ thêm vào URL
+                    window.location.hash = "#name=admin";
+                    // Gọi hàm parse ngay lập tức để render
+                    parseTemplate();
+                } else {
+                    parseTemplate();
+                }
+            });
+
             window.addEventListener('hashchange', parseTemplate);
-            if(window.location.hash) parseTemplate();
         </script>
     """
     return render_template_string(base_layout, active_level=9, titles=titles,
